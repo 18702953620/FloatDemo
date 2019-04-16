@@ -45,8 +45,6 @@ public class CActivity extends AppCompatActivity {
     @OnClick(R.id.btn_a)
     public void onViewClicked() {
         addFloat(button);
-
-
     }
 
     private void addFloat(Button button) {

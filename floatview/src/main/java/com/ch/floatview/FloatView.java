@@ -1,5 +1,7 @@
 package com.ch.floatview;
 
+import android.animation.ValueAnimator;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -8,9 +10,11 @@ import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
 import android.support.v4.app.FragmentActivity;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
+import android.view.animation.TranslateAnimation;
 
 import com.ch.floatview.listener.FloatLifecycle;
 import com.ch.floatview.listener.LifecycleListener;
@@ -27,6 +31,7 @@ public class FloatView {
     private WindowManager windowManager;
     private Builder builder;
     private WindowManager.LayoutParams layoutParams;
+    @SuppressLint("StaticFieldLeak")
     private static FloatView INSTANCE;
     private FloatLifecycle floatLifecycle;
     private Context context;
@@ -39,6 +44,9 @@ public class FloatView {
         return INSTANCE;
     }
 
+    public Builder getBuilder() {
+        return builder;
+    }
 
     private void init(Builder builder) {
         this.builder = builder;
@@ -67,8 +75,9 @@ public class FloatView {
             layoutParams.gravity = builder.gravity;
         }
 
-        layoutParams.y = builder.y;
         layoutParams.x = builder.x;
+        
+        layoutParams.y = builder.y;
 
         layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
 
@@ -95,26 +104,36 @@ public class FloatView {
                     dismiss();
                 }
             });
-
         }
 
 
     }
 
     private void addView() {
+        //如果已经添加过
         if (builder.view.isAttachedToWindow()) {
-            //如果已经添加过
+            return;
+        }
+        context.registerReceiver(floatLifecycle, new IntentFilter(Intent.ACTION_CLOSE_SYSTEM_DIALOGS));
+        windowManager.addView(builder.view, layoutParams);
+    }
+
+    private void removeView() {
+        //如果已经被移除
+        if (!builder.view.isAttachedToWindow()) {
             return;
         }
 
-        windowManager.addView(builder.view, layoutParams);
+        //移除广播
+        context.unregisterReceiver(floatLifecycle);
+        windowManager.removeView(builder.view);
+
     }
 
     public void show() {
         if (windowManager == null || builder == null || layoutParams == null) {
             return;
         }
-        context.getApplicationContext().registerReceiver(floatLifecycle, new IntentFilter(Intent.ACTION_CLOSE_SYSTEM_DIALOGS));
 
         //6.0之上 要判断权限
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -141,6 +160,34 @@ public class FloatView {
         }
     }
 
+    public void updata(int y, long duration) {
+
+        if (builder == null || windowManager == null) {
+            return;
+        }
+
+        //如果已经被移除
+        if (!builder.view.isAttachedToWindow()) {
+            addView();
+        }
+        //2次更新值相同时 不启动动画
+        if (builder.y == y) {
+            return;
+        }
+
+        ValueAnimator valueAnimator = ValueAnimator.ofInt(builder.y, y);
+        valueAnimator.setDuration(duration);
+        valueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                layoutParams.y = (int) animation.getAnimatedValue();
+                windowManager.updateViewLayout(builder.view, layoutParams);
+            }
+        });
+
+        valueAnimator.start();
+    }
+
 
     public void show(Builder builder) {
         if (builder == null) {
@@ -156,14 +203,7 @@ public class FloatView {
         if (windowManager == null || builder == null || builder.view == null) {
             return;
         }
-        //如果已经被移除
-        if (!builder.view.isAttachedToWindow()) {
-            return;
-        }
-        //移除广播
-        context.getApplicationContext().unregisterReceiver(floatLifecycle);
-
-        windowManager.removeView(builder.view);
+        removeView();
     }
 
 

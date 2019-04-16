@@ -1,6 +1,5 @@
 package com.ch.floatdemo;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -26,4 +25,7 @@ public class BActivity extends AppCompatActivity {
     public void onViewClicked() {
         startActivity(new Intent(this, CActivity.class));
     }
+
+
+
 }
